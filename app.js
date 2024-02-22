@@ -1,5 +1,5 @@
 const { Telegraf } = require('telegraf');
-const session = require('telegraf/session');
+
 const { Sequelize } = require('sequelize');
 
 // Configure SQLite database
