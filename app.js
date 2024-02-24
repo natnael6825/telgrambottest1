@@ -1,102 +1,141 @@
-const { Telegraf } = require('telegraf');
+const { Telegraf, session } = require('telegraf');
+const { Sequelize, DataTypes } = require('sequelize');
+require('dotenv').config();
 
-const { Sequelize } = require('sequelize');
+// Initialize Telegraf bot
+const bot = new Telegraf(process.env.BOT_TOKEN);
 
-// Configure SQLite database
+// Enable session middleware
+bot.use(session());
+
+// Connect to SQLite database using Sequelize
 const sequelize = new Sequelize({
   dialect: 'sqlite',
   storage: 'database.sqlite'
 });
 
-// Test database connection
-async function testDatabaseConnection() {
-  try {
-    await sequelize.authenticate();
-    console.log('Database connection successful.');
-  } catch (error) {
-    console.error('Unable to connect to the database:', error);
-  }
-}
-
-testDatabaseConnection();
-
-// Define Sequelize models
+// Define User model
 const User = sequelize.define('User', {
   id: {
-    type: Sequelize.INTEGER,
+    type: DataTypes.INTEGER,
     primaryKey: true,
     autoIncrement: true
   },
-  username: Sequelize.STRING,
-  role: Sequelize.STRING,
-  createdAt: Sequelize.DATE
-});
-
-const Admin = sequelize.define('Admin', {
-  id: {
-    type: Sequelize.INTEGER,
-    primaryKey: true,
-    autoIncrement: true
+  username: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    unique: true
   },
-  username: Sequelize.STRING
-});
-
-// Initialize Telegraf bot
-const bot = new Telegraf('7025523362:AAFEV1XhagZjJBjJGhzMMKhQKshrWIxr17k');
-
-// Middleware to check if user is admin
-bot.use((ctx, next) => {
-  if (ctx.session.isAdmin) {
-    return next();
-  } else {
-    ctx.reply('You are not authorized to perform this action.');
+  role: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    defaultValue: 'user'
+  },
+  createdAt: {
+    type: DataTypes.DATE,
+    defaultValue: DataTypes.NOW
   }
 });
 
-// Command to register user
+// Define Admin model
+const Admin = sequelize.define('Admin', {
+  id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true
+  },
+  username: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    unique: true
+  }
+});
+
+// Middleware to check if the user is an admin
+bot.use(async (ctx, next) => {
+  const { id } = ctx.from;
+  const admin = await Admin.findOne({ where: { username: id } });
+  if (admin) {
+    // If the user is an admin, attach isAdmin flag to ctx object
+    ctx.isAdmin = true;
+  } else {
+    ctx.isAdmin = false;
+  }
+  next();
+});
+
+// Command to register as a user
 bot.command('register', async (ctx) => {
   const { id, username } = ctx.from;
   try {
-    await User.create({ id, username });
-    ctx.reply('You have been successfully registered.');
+    const user = await User.create({ username });
+    ctx.reply(`You have been successfully registered as a user. Your registration date is: ${user.createdAt}`);
   } catch (error) {
-    ctx.reply('Registration failed. Please try again later.');
+    console.error('Error registering user:', error);
+    ctx.reply('Error registering user.');
   }
 });
 
-// Command to register admin
+// Command to start the bot and display available commands
+bot.command('start', async (ctx) => {
+  ctx.reply(`Welcome to the bot!\n\n` +
+            `Commands available:\n/register - Register as a user\n/adminregister - Register as an admin\n/myinfo - View your registration info\n/listusers - List all registered users`);
+});
+
+// Command to register as an admin
 bot.command('adminregister', async (ctx) => {
   const { id, username } = ctx.from;
   try {
-    await Admin.create({ id, username });
-    ctx.reply('Admin registration successful.');
+    const admin = await Admin.create({ username });
+    ctx.reply(`You have been successfully registered as an admin.`);
   } catch (error) {
-    ctx.reply('Admin registration failed. Please try again later.');
+    console.error('Error registering admin:', error);
+    ctx.reply('Error registering admin.');
   }
 });
 
-// Command to list users (for admins only)
+// Command to list all registered users
 bot.command('listusers', async (ctx) => {
+  if (!ctx.isAdmin) {
+    ctx.reply('You are not authorized to use this command.');
+    return;
+  }
   try {
     const users = await User.findAll();
+    let userList = '';
     users.forEach(user => {
-      ctx.reply(`Username: ${user.username}, Registration Date: ${user.createdAt}`);
+      userList += `Username: ${user.username}, Registration Date: ${user.createdAt}\n`;
     });
+    ctx.reply(`List of registered users:\n${userList}`);
   } catch (error) {
-    ctx.reply('Failed to list users.');
+    console.error('Error listing users:', error);
+    ctx.reply('Error listing users.');
   }
 });
-
-// Command to show user registration date
 bot.command('myinfo', async (ctx) => {
-  const { id } = ctx.from;
+  const { username } = ctx.from;
+  console.log('User ID:', username); // Log the user's ID
+
   try {
-    const user = await User.findOne({ where: { id } });
-    ctx.reply(`Your registration date: ${user.createdAt}`);
+    const user = await User.findOne({ where: { username: username } });
+    console.log('User found:', user); // Log the user object retrieved from the database
+    if (user) {
+      ctx.reply(`Your registration date is: ${user.createdAt}`);
+    } else {
+      ctx.reply('You are not registered yet.');
+    }
   } catch (error) {
-    ctx.reply('Failed to retrieve registration date.');
+    console.error('Error fetching user info:', error);
+    ctx.reply('Error fetching user info.');
   }
 });
 
-// Launch the bot
-bot.launch();
+
+// Synchronize the defined models with the database
+sequelize.sync()
+  .then(() => {
+    console.log('Database & tables created!');
+    // Launch the bot after the database is synced
+    bot.launch();
+  })
+  .catch(err => console.error('Error syncing database:', err));
