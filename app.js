@@ -1,6 +1,14 @@
+const express = require('express');
 const { Telegraf, session } = require('telegraf');
 const { Sequelize, DataTypes } = require('sequelize');
-require('dotenv').config();
+const dotenv = require('dotenv');
+const fs = require('fs');
+
+// Load environment variables from .env file
+dotenv.config();
+
+// Create an Express app
+const app = express();
 
 // Initialize Telegraf bot
 const bot = new Telegraf(process.env.BOT_TOKEN);
@@ -130,7 +138,6 @@ bot.command('myinfo', async (ctx) => {
   }
 });
 
-
 // Synchronize the defined models with the database
 sequelize.sync()
   .then(() => {
@@ -139,3 +146,14 @@ sequelize.sync()
     bot.launch();
   })
   .catch(err => console.error('Error syncing database:', err));
+
+// Route to handle incoming messages from Telegram
+app.post(`/bot${process.env.BOT_TOKEN}`, (req, res) => {
+  bot.handleUpdate(req.body, res);
+});
+
+// Start the Express app
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});
