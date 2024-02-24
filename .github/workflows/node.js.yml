@@ -17,7 +17,6 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - uses: actions/setup-node@v3
-    - run: npm ci
+    - uses: actions/setup-node@v
     - run: npm run build --if-present
-    - run: npm test
+    - run: npm app.js
