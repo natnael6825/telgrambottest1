@@ -85,6 +85,7 @@ bot.command('register', async (ctx) => {
   }
 });
 
+
 // Command to start the bot and display available commands
 bot.command('start', async (ctx) => {
   ctx.reply(`Welcome to the bot!\n\n` +
