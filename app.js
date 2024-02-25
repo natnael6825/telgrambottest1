@@ -32,6 +32,22 @@ const Admin = sequelize.define('Admin', {
   }
 });
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // Define associations if needed
 
 // Sync models with the database
