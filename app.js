@@ -1,45 +1,33 @@
 const { Telegraf } = require('telegraf');
-const { Sequelize, DataTypes } = require('sequelize');
-const dotenv = require('dotenv');
+const { Sequelize } = require('sequelize');
 
-// Load environment variables from .env file
-dotenv.config();
 
-// Initialize Sequelize with SQLite database
-const sequelize = new Sequelize({
-  dialect: 'sqlite',
-  storage: 'database.sqlite'
+// Initialize Sequelize with MySQL
+const sequelize = new Sequelize('sql3686735', 'sql3686735', 'TwI5XPdAaz', {
+  host: 'sql3.freesqldatabase.com',
+  port: 3306,
+  dialect: 'mysql'
 });
 
 // Define User and Admin models
 const User = sequelize.define('User', {
-  id: {
-    type: DataTypes.INTEGER,
-    primaryKey: true,
-    autoIncrement: true
-  },
   username: {
-    type: DataTypes.STRING,
+    type: Sequelize.STRING,
     allowNull: false
   },
   role: {
-    type: DataTypes.STRING,
+    type: Sequelize.STRING,
     allowNull: false
   },
   createdAt: {
-    type: DataTypes.DATE,
-    defaultValue: DataTypes.NOW
+    type: Sequelize.DATE,
+    defaultValue: Sequelize.NOW
   }
 });
 
 const Admin = sequelize.define('Admin', {
-  id: {
-    type: DataTypes.INTEGER,
-    primaryKey: true,
-    autoIncrement: true
-  },
   username: {
-    type: DataTypes.STRING,
+    type: Sequelize.STRING,
     allowNull: false
   }
 });
@@ -50,7 +38,9 @@ const Admin = sequelize.define('Admin', {
 sequelize.sync();
 
 // Initialize Telegraf bot
-const bot = new Telegraf(process.env.BOT_TOKEN);
+const bot = new Telegraf("7049705525:AAH9t3-CarYGBv-PaHSefo1kovh_R0eOi9A");
+console.log("Bot Token:", process.env.BOT_TOKEN);
+
 
 // Command to start the bot and display available commands
 bot.command('start', async (ctx) => {
@@ -115,8 +105,6 @@ bot.command('listusers', async (ctx) => {
     ctx.reply(`Error fetching users: ${error.message}`);
   }
 });
-
-console.log("eKB")
 
 // Launch the bot
 bot.launch();
