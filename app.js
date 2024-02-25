@@ -141,6 +141,41 @@ bot.command('myinfo', async (ctx) => {
   }
 });
 
+// Synchronize the defined models with the database
+sequelize.sync()
+  .then(() => {
+    console.log('Database & tables created!');
+    // Launch the bot after the database is synced
+    bot.launch();
+  })
+  .catch(err => console.error('Error syncing database:', err));
+
+// Configure AWS credentials
+AWS.config.update({
+  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  region: process.env.AWS_REGION
+});
+
+// Create an S3 instance
+const s3 = new AWS.S3();
+
+// Upload database file to S3 on process exit
+process.on('exit', async () => {
+  try {
+    const data = fs.readFileSync('database.sqlite'); // Read the SQLite database file
+    const params = {
+      Bucket: process.env.AWS_S3_BUCKET, // Your S3 bucket name
+      Key: 'database.sqlite', // Name of the file in S3
+      Body: data
+    };
+    await s3.upload(params).promise(); // Upload the file to S3
+    console.log('Database file uploaded to S3 successfully');
+  } catch (error) {
+    console.error('Error uploading database file to S3:', error);
+  }
+});
+
 // Route to handle incoming messages from Telegram
 app.post(`/bot${process.env.BOT_TOKEN}`, (req, res) => {
   bot.handleUpdate(req.body, res);
