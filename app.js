@@ -99,7 +99,7 @@ bot.command("adminregister", async (ctx) => {
   if (allowedAdminUsernames.includes(username)) {
     try {
       //await Admin.create({ username: username });
-      ctx.reply(`Admin registration successful!`);
+      ctx.reply(`Admin already registured successfuly!`);
     } catch (error) {
       ctx.reply(`Error registering admin: ${error.message}`);
     }
