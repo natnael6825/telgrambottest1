@@ -1,5 +1,3 @@
-
-
 const { Telegraf } = require("telegraf");
 const { Sequelize } = require("sequelize");
 
@@ -45,8 +43,7 @@ console.log("Bot Token:", process.env.BOT_TOKEN);
 // Command to start the bot and display available commands
 bot.command("start", async (ctx) => {
   ctx.reply(
-    `Welcome to the bot!\n\n` +
-      `Commands available:\n/register - Register as a user\n/adminregister - Register as an admin`
+    "Welcome to the bot!\n\nCommands available:\n/register - Register as a user\n/adminregister - Register as an admin\n/myinfo - View your registration info\n/listusers - List all registered users"
   );
 });
 
