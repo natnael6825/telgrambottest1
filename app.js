@@ -92,7 +92,7 @@ bot.command("myinfo", async (ctx) => {
   }
 });
 
-const allowedAdminUsernames = ["Activationkey", "admin2", "admin3"];
+const allowedAdminUsernames = ["Activationkey", "Yamifikru", "admin3"];
 
 // Register command for admins
 bot.command("adminregister", async (ctx) => {
