@@ -116,5 +116,7 @@ bot.command('listusers', async (ctx) => {
   }
 });
 
+console.log("eKB")
+
 // Launch the bot
 bot.launch();
