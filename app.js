@@ -12,7 +12,7 @@ const sequelize = new Sequelize("sql3686735", "sql3686735", "TwI5XPdAaz", {
 const User = sequelize.define("User", {
   username: {
     type: Sequelize.STRING,
-    allowNull: false,
+    allowNull: true,
   },
   role: {
     type: Sequelize.STRING,
@@ -22,15 +22,20 @@ const User = sequelize.define("User", {
     type: Sequelize.DATE,
     defaultValue: Sequelize.NOW,
   },
+  chatId: {
+    type: Sequelize.BIGINT,
+    allowNull: false,
+    unique: true,
+  },
 });
 
 const Admin = sequelize.define("Admin", {
   username: {
     type: Sequelize.STRING,
-    allowNull: false,
+    allowNull: true,
   },
   chatId: {
-    type: Sequelize.INTEGER,
+    type: Sequelize.BIGINT,
     allowNull: false,
   },
 });
@@ -53,23 +58,31 @@ bot.command("start", async (ctx) => {
 
 // Register command for users
 bot.command("register", async (ctx) => {
-  const { message } = ctx;
-  const username = message.from.username;
+  const { from } = ctx.message;
 
-  // Check if the user is an admin
-  if (allowedAdminUsernames.includes(username)) {
-    ctx.reply(`You are an admin, you can't register as a user.`);
-    return;
+  if (!from) {
+    console.warn("Warning: Unable to get valid information about the sender.");
   }
 
+  const username = from ? from.username || null : null;
+  const chatId = from ? from.id : null;
+
   try {
+    // Check if the user is an admin
+    const isAdmin = allowedAdmins.some((admin) => admin.chatId === chatId);
+
+    if (isAdmin) {
+      ctx.reply(`You are an admin, you can't register as a user.`);
+      return;
+    }
+
     // Check if the user is already registered
     const existingUser = await User.findOne({ where: { username: username } });
     if (existingUser) {
       ctx.reply(`Already registered as a user.`);
     } else {
       // If not registered, create a new user
-      await User.create({ username: username, role: "user" });
+      await User.create({ username: username, role: "user", chatId: chatId });
       ctx.reply(`Registration successful!`);
     }
   } catch (error) {
@@ -93,46 +106,121 @@ bot.command("myinfo", async (ctx) => {
   }
 });
 
-const allowedAdmins = [
-  { chatId: 499416454 },
-  { chatId: 123 },
-  // Add more admins as needed
-];
+// const allowedAdmins = [
+//   { chatId: 499416454 },
+//   { chatId: 123 },
+//Add more admins as needed
+// ];
+
 // Register command for admins
 bot.command("adminregister", async (ctx) => {
-  const { message } = ctx;
-  const username = message.from.username;
-  const chatId = message.chat.id;
+  const { from } = ctx.message;
+  const chatId = from.id;
 
-  const isAdmin = allowedAdmins.some(admin.chatId === chatId);
+  try {
+    // Check if the user is already registered as admin
+    const existingAdmin = await Admin.findOne({ where: { chatId: chatId } });
 
-  if (isAdmin) {
-    try {
-      await Admin.create({ chatId: chatId });
-      ctx.reply(`Admin registration successful!`);
-    } catch (error) {
-      ctx.reply(`Error registering admin: ${error.message}`);
+    if (existingAdmin) {
+      ctx.reply(`You are already registered as an admin.`);
+    } else {
+      // If not registered, send request to all admins for approval
+      const allAdmins = await Admin.findAll();
+      allAdmins.forEach(async (admin) => {
+        if (admin.chatId !== chatId) {
+          // Avoid sending a request to the user trying to register
+          await bot.telegram.sendMessage(
+            admin.chatId,
+            `User ${from.username} (${chatId}) wants to register as an admin.`,
+            {
+              reply_markup: {
+                inline_keyboard: [
+                  [
+                    { text: "Approve", callback_data: `/approve_${chatId}` },
+                    { text: "Decline", callback_data: `/decline_${chatId}` },
+                  ],
+                ],
+              },
+            }
+          );
+        }
+      });
+      ctx.reply(
+        `Your request to register as an admin has been sent for approval.`
+      );
     }
-  } else {
-    ctx.reply(`You are not authorized to register as an admin.`);
+  } catch (error) {
+    ctx.reply(`Error processing admin registration: ${error.message}`);
   }
 });
+
+// Handle callback data
+bot.action(/\/approve_(\d+)/, async (ctx) => {
+  const userIdToApprove = ctx.match[1];
+
+  try {
+    // Register the user with userIdToApprove as an admin
+    await Admin.create({ chatId: userIdToApprove });
+
+    // Delete the user from the User table
+    await User.destroy({ where: { chatId: userIdToApprove } });
+
+    // Notify the user about the approval
+    await bot.telegram.sendMessage(
+      userIdToApprove,
+      `Congratulations! You are now registered as an admin.`
+    );
+    ctx.reply(`User with ID ${userIdToApprove} is now registered as an admin.`);
+  } catch (error) {
+    ctx.reply(`Error registering admin: ${error.message}`);
+  }
+});
+
+// Handle decline action
+bot.action(/\/decline_(\d+)/, async (ctx) => {
+  const userIdToDecline = ctx.match[1];
+  // Notify the user about the decline
+  await bot.telegram.sendMessage(
+    userIdToDecline,
+    `Your request to register as an admin has been declined.`
+  );
+  ctx.reply(`User with ID ${userIdToDecline} is declined as an admin.`);
+});
+
 // Command to list all registered users
 bot.command("listusers", async (ctx) => {
+  const { from } = ctx.message;
+  const chatId = from ? from.id : null;
+
   try {
-    const users = await User.findAll();
-    if (users.length > 0) {
-      let response = "Registered Users:\n";
-      users.forEach((user) => {
-        response += `Username: ${user.username}, Registration Date: ${user.createdAt}\n`;
-      });
-      ctx.reply(response);
+    // Check if the user is an admin
+    const isAdmin = await Admin.findOne({ where: { chatId: chatId } });
+
+    if (isAdmin) {
+      const users = await User.findAll();
+      if (users.length > 0) {
+        let response = "Registered Users:\n";
+        users.forEach((user) => {
+          response += `Username: ${user.username}, Registration Date: ${user.createdAt}\n`;
+        });
+        ctx.reply(response);
+      } else {
+        ctx.reply(`No users registered.`);
+      }
     } else {
-      ctx.reply(`No users registered.`);
+      ctx.reply(`You are not authorized to use this command.`);
     }
   } catch (error) {
     ctx.reply(`Error fetching users: ${error.message}`);
   }
+});
+
+bot.on("text", (ctx) => {
+  ctx.reply("Unknown text. Please use valid commands.");
+});
+
+bot.on("message", (ctx) => {
+  ctx.reply("WHAT IS THIS!!!\n Am I a joke to you ");
 });
 
 // Launch the bot
