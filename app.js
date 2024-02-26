@@ -29,6 +29,10 @@ const Admin = sequelize.define("Admin", {
     type: Sequelize.STRING,
     allowNull: false,
   },
+  chatId: {
+    type: Sequelize.INTEGER,
+    allowNull: false,
+  },
 });
 
 // Define associations if needed
@@ -89,17 +93,23 @@ bot.command("myinfo", async (ctx) => {
   }
 });
 
-const allowedAdminUsernames = ["Activationkey", "Yamifikru", "admin3"];
-
+const allowedAdmins = [
+  { chatId: 499416454 },
+  { chatId: 123 },
+  // Add more admins as needed
+];
 // Register command for admins
 bot.command("adminregister", async (ctx) => {
   const { message } = ctx;
   const username = message.from.username;
+  const chatId = message.chat.id;
 
-  if (allowedAdminUsernames.includes(username)) {
+  const isAdmin = allowedAdmins.some(admin.chatId === chatId);
+
+  if (isAdmin) {
     try {
-      //await Admin.create({ username: username });
-      ctx.reply(`Admin already registured successfuly!`);
+      await Admin.create({ chatId: chatId });
+      ctx.reply(`Admin registration successful!`);
     } catch (error) {
       ctx.reply(`Error registering admin: ${error.message}`);
     }
@@ -107,7 +117,6 @@ bot.command("adminregister", async (ctx) => {
     ctx.reply(`You are not authorized to register as an admin.`);
   }
 });
-
 // Command to list all registered users
 bot.command("listusers", async (ctx) => {
   try {
