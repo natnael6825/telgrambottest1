@@ -69,7 +69,7 @@ bot.command("register", async (ctx) => {
 
   try {
     // Check if the user is an admin
-    const isAdmin = allowedAdmins.some((admin) => admin.chatId === chatId);
+    const isAdmin = await Admin.findOne({ where: { chatId: chatId } });
 
     if (isAdmin) {
       ctx.reply(`You are an admin, you can't register as a user.`);
