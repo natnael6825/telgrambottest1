@@ -31,6 +31,7 @@ const User = sequelize.define("User", {
 
 const Admin = sequelize.define("Admin", {
   username: {
+    
     type: Sequelize.STRING,
     allowNull: true,
   },
