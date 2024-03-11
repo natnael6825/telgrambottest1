@@ -2,7 +2,7 @@ const { Telegraf } = require("telegraf");
 const { Sequelize } = require("sequelize");
 
 // Initialize Sequelize with MySQL
-const sequelize = new Sequelize("sql11688611", "sql11688611", "BylsGrr78E", {
+const sequelize = new Sequelize("sql11690341", "sql11690341", "lnyAKMFlA4", {
   host: "sql11.freesqldatabase.com",
   port: 3306,
   dialect: "mysql",
